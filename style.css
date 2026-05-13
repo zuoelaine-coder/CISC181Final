@@ -1,0 +1,12 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #111;
+  font-family: Arial;
+}
+
+canvas {
+  display: block;
+  margin: auto;
+  background: linear-gradient(#222, #111);
+}
