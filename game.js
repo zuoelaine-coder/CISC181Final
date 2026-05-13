@@ -1,0 +1,276 @@
+import { poseService } from './core/input/pose-service.js';
+
+const {
+  init,
+  GameLoop,
+  Sprite,
+  Text
+} = kontra;
+
+let { canvas, context } = init('game');
+
+canvas.width = 1000;
+canvas.height = 500;
+
+//////////////////////////////////////////////////////
+// AUDIO
+//////////////////////////////////////////////////////
+
+const jumpSound = new Audio('./assets/jump.wav');
+const hitSound = new Audio('./assets/hit.wav');
+const music = new Audio('./assets/music.mp3');
+
+music.loop = true;
+music.volume = 0.3;
+
+//////////////////////////////////////////////////////
+// GAME STATE
+//////////////////////////////////////////////////////
+
+let gameStarted = false;
+let gameOver = false;
+let score = 0;
+let blinkCooldown = false;
+
+// GROUND_Y means the TOP of the ground
+const PLAYER_GROUND_Y = 225;
+const VISUAL_GROUND_Y = 400;
+
+//////////////////////////////////////////////////////
+// PLAYER
+//////////////////////////////////////////////////////
+
+const player = Sprite({
+  x: 120,
+  y: PLAYER_GROUND_Y - 50,
+  width: 50,
+  height: 50,
+  color: '#00ffff',
+
+  dy: 0,
+  gravity: 0.8,
+  jumpForce: -15,
+
+  update() {
+    this.dy += this.gravity;
+    this.y += this.dy;
+
+    // keep player on top of ground
+    if (this.y > PLAYER_GROUND_Y - this.height) {
+      this.y = PLAYER_GROUND_Y - this.height;
+      this.dy = 0;
+    }
+  },
+
+  render() {
+    context.fillStyle = this.color;
+
+    context.save();
+
+    context.translate(this.x + this.width / 2, this.y + this.height / 2);
+    context.rotate(this.dy * 0.03);
+
+    context.fillRect(
+      -this.width / 2,
+      -this.height / 2,
+      this.width,
+      this.height
+    );
+
+    context.restore();
+  },
+
+  jump() {
+    if (this.y >= PLAYER_GROUND_Y - this.height) {
+      this.dy = this.jumpForce;
+      jumpSound.currentTime = 0;
+      jumpSound.play();
+    }
+  }
+});
+
+//////////////////////////////////////////////////////
+// OBSTACLES
+//////////////////////////////////////////////////////
+
+let obstacles = [];
+
+function createObstacle() {
+  const obstacleHeight = 70;
+
+  obstacles.push({
+    x: canvas.width,
+    y: VISUAL_GROUND_Y - obstacleHeight,
+    width: 40,
+    height: obstacleHeight,
+    speed: 7
+  });
+}
+
+setInterval(() => {
+  if (!gameOver && gameStarted) {
+    createObstacle();
+  }
+}, 1500);
+
+//////////////////////////////////////////////////////
+// SCORE TEXT
+//////////////////////////////////////////////////////
+
+const scoreText = Text({
+  text: 'Score: 0',
+  x: 20,
+  y: 20,
+  color: 'white',
+  font: '32px Arial'
+});
+
+//////////////////////////////////////////////////////
+// GAME LOOP
+//////////////////////////////////////////////////////
+
+const loop = GameLoop({
+
+  update() {
+    if (gameOver) return;
+
+    if (gameStarted) {
+      score += 0.05;
+      scoreText.text = 'Score: ' + Math.floor(score);
+
+      player.update();
+
+      obstacles.forEach(obstacle => {
+        obstacle.x -= obstacle.speed;
+
+        // collision
+        const collisionOffsetY = 175;
+
+        if (
+        player.x < obstacle.x + obstacle.width &&
+        player.x + player.width > obstacle.x &&
+        player.y + collisionOffsetY < obstacle.y + obstacle.height &&
+        player.y + player.height + collisionOffsetY > obstacle.y
+        ) {
+          gameOver = true;
+
+          music.pause();
+          hitSound.play();
+        }
+      });
+
+      obstacles = obstacles.filter(o => o.x > -100);
+    }
+  },
+
+  render() {
+    // background
+    context.fillStyle = '#111';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    // ground
+    context.fillStyle = '#333';
+    context.fillRect(0, VISUAL_GROUND_Y, canvas.width, canvas.height - VISUAL_GROUND_Y);
+
+    // obstacles
+    context.fillStyle = '#ff0055';
+
+    obstacles.forEach(o => {
+      context.beginPath();
+
+      context.moveTo(o.x, o.y + o.height);
+      context.lineTo(o.x + o.width / 2, o.y);
+      context.lineTo(o.x + o.width, o.y + o.height);
+
+      context.closePath();
+      context.fill();
+    });
+
+    player.render();
+
+    scoreText.render();
+
+    if (!gameStarted) {
+      context.fillStyle = 'white';
+      context.font = '40px Arial';
+
+      context.fillText(
+        'NOD TO START',
+        330,
+        200
+      );
+    }
+
+    if (gameOver) {
+      context.fillStyle = 'red';
+      context.font = '50px Arial';
+
+      context.fillText(
+        'GAME OVER',
+        330,
+        200
+      );
+
+      context.font = '30px Arial';
+
+      context.fillText(
+        'Refresh to Restart',
+        360,
+        260
+      );
+    }
+  }
+});
+
+//////////////////////////////////////////////////////
+// START / HEAD MOVEMENT INPUT
+//////////////////////////////////////////////////////
+
+let stillTime = 0;
+
+poseService.subscribe((poses) => {
+  if (!poses || gameOver) return;
+
+  const pose = poses[0];
+  if (!pose) return;
+
+  const nose = pose.keypoints.find(k => k.name === "nose");
+  const leftEye = pose.keypoints.find(k => k.name === "left_eye");
+  const rightEye = pose.keypoints.find(k => k.name === "right_eye");
+
+  if (!nose || !leftEye || !rightEye) return;
+
+  const eyeLevel = (leftEye.y + rightEye.y) / 2;
+
+  const movement = Math.abs(eyeLevel - (window.lastEyeLevel || eyeLevel));
+  window.lastEyeLevel = eyeLevel;
+
+  // start game
+  if (!gameStarted) {
+    if (movement > 12 && !blinkCooldown) {
+      blinkCooldown = true;
+
+      gameStarted = true;
+      music.play();
+      window.lastEyeLevel = null;
+
+      setTimeout(() => {
+        blinkCooldown = false;
+      }, 800);
+    }
+
+    return;
+  }
+
+  // jump
+  if (movement > 6 && !blinkCooldown) {
+    blinkCooldown = true;
+    player.jump();
+
+    setTimeout(() => {
+      blinkCooldown = false;
+    }, 250);
+  }
+});
+
+loop.start();
