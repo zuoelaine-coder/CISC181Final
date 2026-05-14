@@ -48,13 +48,15 @@ const VISUAL_GROUND_Y = 400;
 //////////////////////////////////////////////////////
 // PLAYER
 //////////////////////////////////////////////////////
+const COLLISION_OFFSET_X = 125;
+const COLLISION_OFFSET_Y = 175;
 
 const player = Sprite({
   x: 120,
   y: PLAYER_GROUND_Y - 50,
   width: 50,
   height: 50,
-  color: '#00ffff',
+  color: '#f78feb',
 
   dy: 0,
   gravity: 0.8,
@@ -159,13 +161,25 @@ const loop = GameLoop({
         obstacle.x -= obstacle.speed;
 
         // collision
-        const collisionOffsetY = 175;
+        const playerHitbox = {
+          x: player.x + COLLISION_OFFSET_X,
+          y: player.y + COLLISION_OFFSET_Y,
+          width: player.width,
+          height: player.height
+        };
+
+        const obstacleHitbox = {
+          x: obstacle.x + 10,
+          y: obstacle.y + 20,
+          width: obstacle.width - 20,
+          height: obstacle.height - 20
+        };
 
         if (
-        player.x < obstacle.x + obstacle.width &&
-        player.x + player.width > obstacle.x &&
-        player.y + collisionOffsetY < obstacle.y + obstacle.height &&
-        player.y + player.height + collisionOffsetY > obstacle.y
+          playerHitbox.x < obstacleHitbox.x + obstacleHitbox.width &&
+          playerHitbox.x + playerHitbox.width > obstacleHitbox.x &&
+          playerHitbox.y < obstacleHitbox.y + obstacleHitbox.height &&
+          playerHitbox.y + playerHitbox.height > obstacleHitbox.y
         ) {
           gameOver = true;
 
