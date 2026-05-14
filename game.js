@@ -13,6 +13,15 @@ canvas.width = 1000;
 canvas.height = 500;
 
 //////////////////////////////////////////////////////
+// BACKGROUND
+//////////////////////////////////////////////////////
+
+const bgImage = new Image();
+bgImage.src = './assets/background.png';
+
+let bgX = 0;
+
+//////////////////////////////////////////////////////
 // AUDIO
 //////////////////////////////////////////////////////
 
@@ -135,6 +144,12 @@ const loop = GameLoop({
     if (gameOver) return;
 
     if (gameStarted) {
+      bgX -= 2;
+
+      if (bgX <= -canvas.width) {
+        bgX = 0;
+      }
+      
       score += 0.05;
       scoreText.text = 'Score: ' + Math.floor(score);
 
@@ -164,9 +179,9 @@ const loop = GameLoop({
   },
 
   render() {
-    // background
-    context.fillStyle = '#111';
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    // scrolling background
+    context.drawImage(bgImage, bgX, 0, canvas.width, canvas.height);
+    context.drawImage(bgImage, bgX + canvas.width, 0, canvas.width, canvas.height);
 
     // ground
     context.fillStyle = '#333';
