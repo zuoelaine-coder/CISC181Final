@@ -100,6 +100,22 @@ const player = Sprite({
   }
 });
 
+function resetGame() {
+  gameStarted = false;
+  gameOver = false;
+  score = 0;
+  bgX = 0;
+  obstacles = [];
+
+  player.x = 120;
+  player.y = PLAYER_GROUND_Y - 50;
+  player.dy = 0;
+
+  scoreText.text = 'Score: 0';
+
+  music.pause();
+  music.currentTime = 0;
+}
 //////////////////////////////////////////////////////
 // OBSTACLES
 //////////////////////////////////////////////////////
@@ -249,7 +265,7 @@ const loop = GameLoop({
       context.font = '30px Arial';
 
       context.fillText(
-        'Refresh to Restart',
+        'Press R to restart',
         360,
         260
       );
@@ -308,4 +324,9 @@ poseService.subscribe((poses) => {
   }
 });
 
+window.addEventListener('keydown', (r) => {
+  if (r.key.toLowerCase() === 'r' && gameOver) {
+    resetGame();
+  }
+});
 loop.start();
