@@ -118,12 +118,18 @@ function createObstacle() {
   });
 }
 
-setInterval(() => {
+function spawnObstacle() {
   if (!gameOver && gameStarted) {
     createObstacle();
   }
-}, 1500);
 
+  // random next spawn time
+  const nextSpawn = Math.random() * 1200 + 800;
+
+  setTimeout(spawnObstacle, nextSpawn);
+}
+
+spawnObstacle();
 //////////////////////////////////////////////////////
 // SCORE TEXT
 //////////////////////////////////////////////////////
